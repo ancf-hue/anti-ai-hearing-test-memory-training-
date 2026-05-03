@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0d1117">
+  <title>Анти ИИ Проверка слуха | Тренировка памяти</title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <style>
+    /* ===== БАЗОВЫЕ НАСТРОЙКИ ===== */
+    * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+    
+    html { scroll-behavior: smooth; }
+    
+    body {
+      background: #000;
+      min-height: 100vh;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: #fff;
+      overflow-x: hidden;
+    }
+
+    /* ===== ЭКРАН ИНТРО (9:16) ===== */
+    #introScreen {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      max-width: 450px;
+      max-height: 800px;
+      aspect-ratio: 9/16;
+      background: #000;
+      margin: auto;
+      overflow: hidden;
+      z-index: 1000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #introScreen.hidden { display: none !important; }
+    
+    .layers {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+    }
+    .layers img, .layers video {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    
+    /* Кнопка звука в интро */
+    .sound-btn {
+      position: absolute;
+      top: 18px; left: 18px;
+      z-index: 30;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(12px);
+      border-radius: 60px;
+      border: 1px solid rgba(255,255,255,0.4);
+      padding: 12px 26px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: bold;
+      font-size: 1.4rem;
+      color: white;
+      transition: 0.1s ease;
+      font-family: system-ui;
+    }
+    .sound-btn:active { transform: scale(0.96); }
+    .sound-btn .ico { font-size: 1.9rem; }
+    .sound-btn .txt { font-size: 1.25rem; }
+    
+    @media (max-width: 480px) {
+      .sound-btn { padding: 8px 20px; }
+      .sound-btn .ico { font-size: 1.6rem; }
+      .sound-btn .txt { font-size: 1.1rem; }
+    }
+
+    /* ===== ОСНОВНОЕ ПРИЛОЖЕНИЕ ===== */
+    #appScreen {
+      display: none;
+      background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+      min-height: 100vh;
+      padding: 16px;
+    }
+    #appScreen.active { display: block; }
+
+    /* ===== ИГРОВОЙ КОНТЕЙНЕР ===== */
+    .game {
+      max-width: 550px;
+      width: 100%;
+      margin: 0 auto;
+      background: rgba(30, 41, 59, 0.98);
+      border-radius: 48px;
+      border: 2px solid rgba(98, 224, 255, 0.5);
+      padding: 24px 20px 16px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+    }
+
+    .title {
+      text-align: center;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid rgba(98, 224, 255, 0.4);
+    }
+    .title h1 {
+      font-size: 1.2rem;
+      margin: 0;
+      color: #fff;
+      text-shadow: 0 0 10px rgba(98, 224, 255, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .title h1 img {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      vertical-align: middle;
+    }
+    .title p {
+      font-size: 0.7rem;
+      color: #62e0ff;
+      margin: 6px 0 0;
+      font-weight: 500;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(15, 23, 42, 0.9);
+      border-radius: 60px;
+      padding: 8px 16px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(98, 224, 255, 0.3);
+    }
+    .level {
+      background: #1e3a5f;
+      padding: 4px 14px;
+      border-radius: 60px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      color: #fff;
+      border: 1px solid #62e0ff;
+    }
+    .score {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: #ffd966;
+      text-shadow: 0 0 8px rgba(255, 217, 102, 0.5);
+    }
+
+    .levels {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    
+    /* ===== СТЕКЛЯННЫЕ 3D КНОПКИ УРОВНЕЙ ===== */
+    .level-btn {
+      flex: 1;
+      background: rgba(30, 58, 95, 0.65);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(98, 224, 255, 0.5);
+      padding: 10px;
+      border-radius: 60px;
+      color: #e0f2fe;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 0.75rem;
+      transition: all 0.2s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+      box-shadow: 0 6px 0 rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255,255,255,0.1);
+      text-shadow: 0 1px 1px rgba(0,0,0,0.3);
+    }
+    .level-btn:hover {
+      background: rgba(45, 90, 140, 0.8);
+      border-color: #62e0ff;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 0 rgba(0, 0, 0, 0.3), 0 6px 20px rgba(98, 224, 255, 0.3);
+    }
+    .level-btn:active {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+      transition: 0.05s;
+    }
+    .level-btn.active {
+      background: linear-gradient(135deg, rgba(44, 110, 158, 0.9), rgba(29, 70, 104, 0.95));
+      backdrop-filter: blur(12px);
+      color: #fff;
+      border-color: #62e0ff;
+      box-shadow: 0 0 18px rgba(98, 224, 255, 0.6), 0 4px 0 rgba(0, 0, 0, 0.3);
+      text-shadow: 0 0 5px rgba(98, 224, 255, 0.5);
+    }
+
+    .play-area {
+      background: rgba(15, 23, 42, 0.8);
+      border-radius: 48px;
+      padding: 24px;
+      text-align: center;
+      margin-bottom: 20px;
+      border: 1px solid rgba(98, 224, 255, 0.2);
+    }
+    
+    /* ===== СТЕКЛЯННАЯ 3D КНОПКА ВОСПРОИЗВЕДЕНИЯ ===== */
+    .play-btn {
+      background: radial-gradient(circle at 30% 25%, rgba(44, 110, 158, 0.9), rgba(30, 58, 95, 0.95));
+      backdrop-filter: blur(8px);
+      border: 2px solid rgba(98, 224, 255, 0.7);
+      width: 100px;
+      height: 100px;
+      border-radius: 60px;
+      font-size: 3rem;
+      cursor: pointer;
+      color: #fff;
+      box-shadow: 0 12px 0 rgba(0, 0, 0, 0.35), 0 8px 25px rgba(0,0,0,0.5), 0 0 20px rgba(98, 224, 255, 0.3);
+      transition: all 0.08s linear;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    .play-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 0 rgba(0, 0, 0, 0.35), 0 10px 30px rgba(98, 224, 255, 0.4);
+    }
+    .play-btn:active { 
+      transform: translateY(6px); 
+      box-shadow: 0 4px 0 rgba(0, 0, 0, 0.35), 0 0 25px rgba(98, 224, 255, 0.6);
+    }
+    .play-btn:disabled { 
+      opacity: 0.5; 
+      cursor: not-allowed; 
+      transform: none;
+      box-shadow: 0 8px 0 rgba(0, 0, 0, 0.3);
+    }
+
+    /* ===== СТЕКЛЯННЫЕ 3D КНОПКИ ЦИФР ===== */
+    .digits {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      margin: 20px 0;
+    }
+    .digit {
+      background: rgba(30, 58, 95, 0.7);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(98, 224, 255, 0.5);
+      padding: 16px;
+      border-radius: 60px;
+      font-size: 1.7rem;
+      font-weight: 800;
+      color: #fff;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.08s linear;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+      box-shadow: 0 8px 0 rgba(0, 0, 0, 0.3), 0 2px 10px rgba(0,0,0,0.2);
+    }
+    .digit:hover { 
+      background: rgba(45, 85, 135, 0.85);
+      border-color: #62e0ff;
+      transform: translateY(-2px);
+      box-shadow: 0 10px 0 rgba(0, 0, 0, 0.3);
+    }
+    .digit:active { 
+      background: rgba(44, 110, 158, 0.9);
+      border-color: #62e0ff;
+      transform: translateY(5px);
+      box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3);
+    }
+
+    /* ===== СТЕКЛЯННЫЕ 3D КНОПКИ ДЕЙСТВИЙ ===== */
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin: 16px 0;
+    }
+    .action {
+      flex: 1;
+      background: rgba(30, 58, 95, 0.7);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(98, 224, 255, 0.5);
+      padding: 14px;
+      border-radius: 60px;
+      font-weight: 800;
+      color: #fff;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.08s linear;
+      box-shadow: 0 8px 0 rgba(0, 0, 0, 0.3);
+      text-shadow: 0 1px 1px rgba(0,0,0,0.3);
+    }
+    .action:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 0 rgba(0, 0, 0, 0.3);
+      border-color: #62e0ff;
+    }
+    .action:active {
+      transform: translateY(5px);
+      box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3);
+      transition: 0.05s;
+    }
+    .action.check { 
+      background: linear-gradient(135deg, rgba(31, 109, 73, 0.85), rgba(12, 88, 57, 0.9));
+      border-color: #4ade80;
+    }
+    .action.check:active { background: linear-gradient(135deg, rgba(37, 133, 89, 0.9), rgba(20, 108, 70, 0.95)); }
+    .action.reset { 
+      background: linear-gradient(135deg, rgba(88, 44, 62, 0.85), rgba(62, 31, 47, 0.9));
+      border-color: #f87171;
+    }
+
+    /* ===== СТЕКЛЯННЫЕ КНОПКИ AI ===== */
+    .ai-box {
+      background: rgba(49, 28, 78, 0.6);
+      backdrop-filter: blur(12px);
+      border-radius: 32px;
+      padding: 14px;
+      margin: 16px 0;
+      border: 2px solid rgba(183, 124, 255, 0.5);
+    }
+    .ai-box.hidden { display: none; }
+    .ai-box .question {
+      font-size: 0.8rem;
+      color: #fff;
+      margin-bottom: 10px;
+      font-weight: 600;
+      text-shadow: 0 0 8px rgba(183, 124, 255, 0.5);
+    }
+    .ai-options {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .ai-opt {
+      flex: 1;
+      min-width: 36px;
+      background: rgba(42, 58, 85, 0.75);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(123, 104, 238, 0.6);
+      padding: 8px 6px;
+      border-radius: 60px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-weight: 700;
+      transition: all 0.08s linear;
+      box-shadow: 0 6px 0 rgba(0, 0, 0, 0.25);
+    }
+    .ai-opt:hover { 
+      border-color: #b77cff; 
+      background: rgba(65, 85, 125, 0.85);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 0 rgba(0, 0, 0, 0.25);
+    }
+    .ai-opt:active {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
+    }
+    .ai-opt.selected { 
+      background: linear-gradient(135deg, rgba(106, 78, 158, 0.9), rgba(90, 65, 140, 0.95));
+      border-color: #b77cff; 
+      box-shadow: 0 0 15px rgba(183, 124, 255, 0.7), 0 4px 0 rgba(0, 0, 0, 0.25);
+      font-weight: 800; 
+    }
+
+    .answer {
+      background: rgba(15, 23, 42, 0.9);
+      padding: 14px;
+      border-radius: 60px;
+      text-align: center;
+      font-size: 1rem;
+      color: #62e0ff;
+      margin-top: 16px;
+      border: 1px solid rgba(98, 224, 255, 0.3);
+      font-weight: 600;
+      letter-spacing: 2px;
+    }
+
+    /* 🔥 ВЫСОКИЙ КОНТРАСТ ДЛЯ ФИБЕКА 🔥 */
+    .feedback {
+      margin-top: 16px;
+      padding: 16px 20px;
+      text-align: center;
+      border-radius: 40px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      border: 2px solid transparent;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+      min-height: 3.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .feedback.correct { 
+      background: linear-gradient(135deg, #d1fae5, #a7f3d0); 
+      color: #065f46 !important; 
+      border-color: #059669 !important;
+      box-shadow: 0 0 20px rgba(5, 150, 105, 0.4);
+    }
+    .feedback.wrong { 
+      background: linear-gradient(135deg, #fee2e2, #fecaca); 
+      color: #991b1b !important; 
+      border-color: #dc2626 !important;
+      box-shadow: 0 0 20px rgba(220, 38, 38, 0.4);
+    }
+    .feedback.info { 
+      background: linear-gradient(135deg, #dbeafe, #bfdbfe); 
+      color: #1e40af !important; 
+      border-color: #3b82f6 !important;
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+    }
+
+    footer {
+      text-align: center;
+      font-size: 0.6rem;
+      color: #64748b;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px dashed rgba(100, 116, 139, 0.4);
+    }
+
+    /* ===== БЛОК ПОДДЕРЖКИ ПРОЕКТА ===== */
+    .support-text-block {
+      margin: 24px 0 12px;
+      padding: 20px 16px;
+      background: rgba(30, 41, 59, 0.95);
+      border-radius: 32px;
+      border: 2px solid rgba(98, 224, 255, 0.3);
+      text-align: center;
+      width: 100%;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      transition: all 0.2s ease;
+    }
+    .support-text-block:hover {
+      border-color: rgba(98, 224, 255, 0.7);
+      box-shadow: 0 6px 25px rgba(98, 224, 255, 0.2);
+    }
+    .support-text-block .support-title {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: #ffd966;
+      text-shadow: 0 0 8px rgba(255, 217, 102, 0.3);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .support-text-block .support-description {
+      font-size: 0.9rem;
+      color: #e2e8f0;
+      line-height: 1.6;
+      margin: 12px 0;
+      padding: 0 4px;
+    }
+    .support-text-block .support-highlight {
+      background: rgba(98, 224, 255, 0.12);
+      padding: 12px;
+      border-radius: 24px;
+      margin: 16px 0 10px;
+      border: 1px solid rgba(98, 224, 255, 0.3);
+    }
+    .support-text-block .phone-number {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin: 12px 0;
+      flex-wrap: wrap;
+    }
+    .support-text-block .phone-num {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #fff;
+      background: rgba(0,0,0,0.5);
+      padding: 8px 20px;
+      border-radius: 60px;
+      border: 2px solid #62e0ff;
+      letter-spacing: 1px;
+    }
+    
+    /* Стеклянная 3D кнопка копирования */
+    .support-text-block .copy-btn {
+      background: rgba(44, 110, 158, 0.85);
+      backdrop-filter: blur(8px);
+      color: #fff;
+      border: 1px solid rgba(98, 224, 255, 0.6);
+      padding: 8px 20px;
+      border-radius: 60px;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.08s linear;
+      box-shadow: 0 5px 0 rgba(0, 0, 0, 0.25);
+    }
+    .support-text-block .copy-btn:hover { 
+      background: rgba(55, 125, 175, 0.9);
+      transform: translateY(-2px);
+      box-shadow: 0 7px 0 rgba(0, 0, 0, 0.25);
+    }
+    .support-text-block .copy-btn:active { 
+      transform: translateY(3px);
+      box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
+    }
+    .support-text-block .copy-btn.copied {
+      background: #1f6d49;
+      border-color: #4ade80;
+    }
+    .support-text-block .support-note {
+      font-size: 0.7rem;
+      color: #94a3b8;
+      margin-top: 8px;
+    }
+    .support-text-block .heart {
+      font-size: 1.4rem;
+      margin: 8px 0;
+      animation: pulse 1.5s ease-in-out infinite;
+      display: inline-block;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+    .support-text-block .catalog-link {
+      display: inline-block;
+      margin-top: 16px;
+      padding: 10px 18px;
+      background: rgba(183, 124, 255, 0.2);
+      backdrop-filter: blur(8px);
+      border-radius: 40px;
+      border: 1px solid rgba(183, 124, 255, 0.5);
+      color: #dbbaff;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.85rem;
+      transition: all 0.15s ease;
+      box-shadow: 0 4px 0 rgba(0, 0, 0, 0.2);
+    }
+    .support-text-block .catalog-link:hover {
+      background: rgba(183, 124, 255, 0.35);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 0 rgba(0, 0, 0, 0.2);
+      color: #fff;
+    }
+    .support-text-block .catalog-link:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+    }
+
+    @media (max-width: 480px) {
+      .support-text-block { padding: 16px 12px; margin: 20px 0 10px; }
+      .support-text-block .phone-num { font-size: 1rem; padding: 6px 14px; }
+      .support-text-block .copy-btn { padding: 6px 16px; font-size: 0.8rem; }
+      .support-text-block .support-title { font-size: 1rem; }
+      .support-text-block .support-description { font-size: 0.8rem; }
+      .digit { padding: 12px; font-size: 1.4rem; }
+      .play-btn { width: 85px; height: 85px; font-size: 2.4rem; }
+    }
+
+    /* Для высокого контраста */
+    @media (prefers-contrast: high) {
+      .support-text-block { border-width: 3px; background: #000; }
+      .support-text-block .phone-num { border-width: 3px; background: #fff; color: #000; }
+      .feedback.correct { background: #fff; color: #000; border: 3px solid #065f46; }
+      .feedback.wrong { background: #fff; color: #000; border: 3px solid #991b1b; }
+      .feedback.info { background: #fff; color: #000; border: 3px solid #1e40af; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===== ЭКРАН ИНТРО (5 секунд) ===== -->
+  <div id="introScreen">
+    <div class="layers">
+      <img id="photo" src="frame.jpg" style="z-index:2" alt="Логотип Анти ИИ">
+      <video id="video" src="cube.mp4" muted playsinline preload="auto" style="z-index:1"></video>
+    </div>
+    <button id="soundBtn" class="sound-btn" aria-label="Включить звук">
+      <span class="ico">🔇</span>
+      <span class="txt">Вкл звук</span>
+    </button>
+  </div>
+
+  <!-- ===== ОСНОВНОЕ ПРИЛОЖЕНИЕ ===== -->
+  <div id="appScreen">
+    <div class="game">
+      <div class="title">
+        <h1>
+          <img src="favicon.ico" alt="">
+          Анти ИИ Проверка слуха.
+        </h1>
+        <p>тренировка памяти</p>
+      </div>
+
+      <div class="top-bar">
+        <span class="level" id="levelText">Уровень 3</span>
+        <span class="score">🎯 <span id="scoreVal">0</span></span>
+      </div>
+
+      <div class="levels">
+        <button data-lvl="1" class="level-btn">1 · тишина</button>
+        <button data-lvl="2" class="level-btn">2 · шум средний</button>
+        <button data-lvl="3" class="level-btn active">3 · шум громкий + ИИ</button>
+      </div>
+
+      <div class="play-area">
+        <button class="play-btn" id="playBtn" aria-label="Воспроизвести">🔊</button>
+        <div class="answer" id="answerDisplay">нажмите ▶</div>
+      </div>
+
+      <div class="digits" id="digits"></div>
+
+      <div class="actions">
+        <button class="action reset" id="resetBtn" aria-label="Сбросить">⟳</button>
+        <button class="action check" id="checkBtn" aria-label="Проверить">✅</button>
+      </div>
+
+      <div class="ai-box hidden" id="aiBox">
+        <div class="question">🤖 какая цифра была ИИ?</div>
+        <div class="ai-options" id="aiOptions"></div>
+      </div>
+
+      <div class="feedback info" id="feedback">▶ прослушайте цифры по порядку</div>
+      
+      <div class="support-text-block" id="supportTextBlock">
+        <div class="support-title">
+          <span>💙 ПОДДЕРЖАТЬ ПРОЕКТ</span>
+          <span class="heart">💙</span>
+        </div>
+        <div class="support-description">
+          Приложение бесплатное. Было и останется.<br>
+          Если проект помог вам или вашим близким — вы можете поддержать разработку добровольным переводом.
+        </div>
+        
+        <div class="support-highlight">
+          <strong>📱 ПЕРЕВОД ПО НОМЕРУ ТЕЛЕФОНА:</strong>
+          <div class="phone-number">
+            <span class="phone-num" id="phoneNumBlock">8-920-227-56-76</span>
+            <button class="copy-btn" id="copyBtnBlock">📋 Копировать</button>
+          </div>
+          <p class="support-note">✅ Деньги придут мгновенно. Без комиссии. Безопасно.</p>
+        </div>
+        
+        <div class="support-description" style="margin-top: 12px;">
+          ❤️ Спасибо за поддержку!
+        </div>
+        
+        <a href="https://ancf-hue.github.io/" target="_blank" rel="noopener" class="catalog-link">
+          🌟 👉 Каталог бесплатных офлайн-приложений Anti-AI Shield
+        </a>
+      </div>
+      
+      <footer>слух · память · анти-ИИ · высокий контраст</footer>
+    </div>
+  </div>
+
+  <script>
+    // ===== ПЕРЕМЕННЫЕ =====
+    const introScreen = document.getElementById('introScreen');
+    const appScreen = document.getElementById('appScreen');
+    const photo = document.getElementById('photo');
+    const video = document.getElementById('video');
+    const soundBtn = document.getElementById('soundBtn');
+    const ico = soundBtn.querySelector('.ico');
+    const txt = soundBtn.querySelector('.txt');
+    
+    let soundOn = false;
+    let videoStarted = false;
+    let introFinished = false;
+
+    // ===== ИНТРО: ЛОГИКА =====
+    video.muted = true;
+    
+    function updateSoundBtn() {
+      soundOn ? (ico.innerText='🔊', txt.innerText='Звук вкл') : (ico.innerText='🔇', txt.innerText='Вкл звук');
+    }
+    
+    soundBtn.onclick = () => {
+      if (soundOn) { video.muted = true; soundOn = false; }
+      else { video.muted = false; soundOn = true; if (videoStarted && video.paused) video.play().catch(()=>{}); }
+      updateSoundBtn();
+    };
+    
+    function switchToVideo() {
+      if (videoStarted) return;
+      videoStarted = true;
+      video.style.zIndex = '2';
+      photo.style.zIndex = '1';
+      video.play().catch(e => console.log('Video play error:', e));
+      setTimeout(finishIntro, 3000);
+    }
+    
+    function finishIntro() {
+      if (introFinished) return;
+      introFinished = true;
+      introScreen.style.transition = 'opacity 0.5s ease';
+      introScreen.style.opacity = '0';
+      setTimeout(() => {
+        introScreen.classList.add('hidden');
+        appScreen.classList.add('active');
+        initApp();
+      }, 500);
+    }
+    
+    if (photo.complete && photo.naturalWidth) {
+      setTimeout(switchToVideo, 2000);
+    } else {
+      photo.onload = () => setTimeout(switchToVideo, 2000);
+      setTimeout(() => { if (!videoStarted) switchToVideo(); }, 2500);
+    }
+    updateSoundBtn();
+
+    // ===== ОСНОВНОЕ ПРИЛОЖЕНИЕ =====
+    let level = 3;
+    let sequence = [];
+    let userSeq = [];
+    let aiIndex = null;
+    let userAiIndex = null;
+    let waiting = false;
+    let playing = false;
+    let score = 0;
+    let audioCtx = null;
+    let noiseSrc = null;
+
+    const audioCache = {};
+    for (let i = 0; i <= 9; i++) {
+      const audio = new Audio();
+      audio.preload = 'auto';
+      audio.src = `${i}.mp3`;
+      audioCache[i] = audio;
+    }
+
+    function playDigit(digit, isHuman, callback) {
+      const audio = audioCache[digit];
+      if (!audio) return;
+      const clone = new Audio();
+      clone.src = audio.src;
+      if (isHuman === false && level === 3) {
+        clone.playbackRate = 1.2;
+      } else {
+        clone.playbackRate = 0.95 + Math.random() * 0.1;
+      }
+      clone.volume = 0.8;
+      clone.onended = () => { if (callback) callback(); };
+      clone.play().catch(e => console.log('ошибка:', e));
+    }
+
+    function startNoise() {
+      stopNoise();
+      if (level < 2) return;
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.WebKitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      
+      const bufferSize = 4096;
+      const noiseVolume = level === 2 ? 0.12 : 0.35;
+      
+      const processor = audioCtx.createScriptProcessor(bufferSize, 1, 1);
+      processor.onaudioprocess = (e) => {
+        const out = e.outputBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          out[i] = (Math.random() * 2 - 1) * noiseVolume;
+        }
+      };
+      const gain = audioCtx.createGain();
+      gain.gain.value = level === 3 ? 0.85 : 0.6;
+      processor.connect(gain);
+      gain.connect(audioCtx.destination);
+      noiseSrc = { processor, gain };
+    }
+
+    function stopNoise() {
+      if (noiseSrc) {
+        try { noiseSrc.processor.disconnect(); noiseSrc.gain.disconnect(); } catch(e) {}
+        noiseSrc = null;
+      }
+    }
+
+    function getSeqLen() {
+      return Math.min(5, Math.max(3, 3 + Math.floor(score / 25)));
+    }
+
+    function generateRound() {
+      const len = getSeqLen();
+      sequence = Array.from({length: len}, () => Math.floor(Math.random() * 10));
+      aiIndex = (level === 3) ? Math.floor(Math.random() * len) : null;
+      userSeq = [];
+      userAiIndex = null;
+      waiting = false;
+      document.getElementById('answerDisplay').innerHTML = `▶ ${len} цифр`;
+      renderAiOptions();
+    }
+
+    function renderAiOptions() {
+      const box = document.getElementById('aiBox');
+      const container = document.getElementById('aiOptions');
+      if (level === 3 && sequence.length > 0) {
+        box.classList.remove('hidden');
+        container.innerHTML = '';
+        sequence.forEach((digit, idx) => {
+          const btn = document.createElement('button');
+          btn.className = 'ai-opt';
+          btn.innerText = `${idx+1}`;
+          btn.onclick = () => {
+            if (!waiting) { showMsg('▶ сначала прослушайте', 'info'); return; }
+            userAiIndex = idx;
+            document.querySelectorAll('.ai-opt').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            showMsg(`🤖 выбрана ${idx+1}-я`, 'info');
+          };
+          container.appendChild(btn);
+        });
+      } else {
+        box.classList.add('hidden');
+      }
+    }
+
+    async function playSequence() {
+      if (playing) return;
+      playing = true;
+      document.getElementById('playBtn').disabled = true;
+      userSeq = [];
+      userAiIndex = null;
+      updateAnswerDisplay();
+      renderAiOptions();
+      
+      try {
+        waiting = false;
+        showMsg('🎧 слушайте...', 'info');
+        if (level >= 2) startNoise();
+        
+        for (let i = 0; i < sequence.length; i++) {
+          const digit = sequence[i];
+          const isHuman = (level < 3) ? true : (i !== aiIndex);
+          await new Promise(resolve => playDigit(digit, isHuman, resolve));
+          if (i < sequence.length - 1) await new Promise(r => setTimeout(r, 500));
+        }
+        stopNoise();
+        waiting = true;
+        showMsg('✅ введите цифры по порядку', 'info');
+        document.getElementById('answerDisplay').innerHTML = `✏️ [ ]`;
+      } catch(e) {
+        showMsg('⚠️ ошибка звука', 'wrong');
+        stopNoise();
+      } finally {
+        document.getElementById('playBtn').disabled = false;
+        playing = false;
+      }
+    }
+
+    function updateAnswerDisplay() {
+      const div = document.getElementById('answerDisplay');
+      div.innerHTML = userSeq.length === 0 ? '✏️ [ ]' : `✏️ [ ${userSeq.join(' · ')} ]`;
+    }
+
+    function onDigit(d) {
+      if (!waiting) { showMsg('▶ сначала нажмите ▶', 'info'); return; }
+      if (userSeq.length >= sequence.length) { showMsg('✅ всё введено, нажмите ✅', 'info'); return; }
+      userSeq.push(d);
+      updateAnswerDisplay();
+    }
+
+    function check() {
+      if (!waiting) { showMsg('▶ сначала прослушайте', 'info'); return; }
+      if (userSeq.length !== sequence.length) { showMsg(`⚠️ нужно ${sequence.length} цифр`, 'wrong'); return; }
+      
+      const memOk = userSeq.every((v, i) => v === sequence[i]);
+      let aiOk = true, aiMsg = '';
+      
+      if (level === 3) {
+        if (userAiIndex === null) { aiOk = false; aiMsg = ' ❌ не указан ИИ'; }
+        else if (userAiIndex !== aiIndex) { aiOk = false; aiMsg = ` ❌ ИИ был ${aiIndex+1}-й`; }
+        else { aiMsg = ` 🎯 ИИ найден!`; }
+      }
+      
+      let earn = 0;
+      if (memOk) { earn += 20; showMsg(`🧠 +20 ${aiMsg}`, 'correct'); }
+      else { showMsg(`❌ правильно: ${sequence.join(' ')} ${aiMsg}`, 'wrong'); }
+      
+      if (level === 3 && aiOk && memOk) { earn += 15; showMsg(` 🤖 анти-ИИ +15! всего +${earn}`, 'correct'); }
+      else if (level === 3 && aiOk) { earn += 5; showMsg(` 🕵️ +5 за ИИ`, 'correct'); }
+      
+      if (earn > 0) {
+        score += earn;
+        document.getElementById('scoreVal').innerText = score;
+        localStorage.setItem('ai_hearing_score', score);
+      }
+      setTimeout(() => generateRound(), 2500);
+    }
+
+    function reset() {
+      if (!waiting) { showMsg('▶ сначала прослушайте', 'info'); return; }
+      userSeq = []; userAiIndex = null;
+      updateAnswerDisplay(); renderAiOptions();
+      showMsg('сброшено', 'info');
+    }
+
+    function setLevel(lvl) {
+      level = lvl;
+      document.querySelectorAll('.level-btn').forEach(btn => {
+        btn.classList.toggle('active', parseInt(btn.dataset.lvl) === lvl);
+      });
+      const names = {1:'тишина', 2:'шум средний', 3:'шум громкий + ИИ'};
+      document.getElementById('levelText').innerHTML = `Уровень ${lvl} · ${names[lvl]}`;
+      generateRound();
+      showMsg(`уровень ${lvl}: ${names[lvl]}`, 'info');
+    }
+
+    function showMsg(msg, type) {
+      const el = document.getElementById('feedback');
+      el.className = `feedback ${type}`;
+      el.innerHTML = msg;
+    }
+
+    // ===== ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ =====
+    function initApp() {
+      const saved = localStorage.getItem('ai_hearing_score');
+      if (saved) score = parseInt(saved);
+      document.getElementById('scoreVal').innerText = score;
+      
+      const digitsDiv = document.getElementById('digits');
+      digitsDiv.innerHTML = '';
+      for (let i = 0; i <= 9; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'digit';
+        btn.innerText = i;
+        btn.onclick = () => onDigit(i);
+        digitsDiv.appendChild(btn);
+      }
+      
+      generateRound();
+      document.getElementById('playBtn').onclick = () => playSequence();
+      document.getElementById('checkBtn').onclick = () => check();
+      document.getElementById('resetBtn').onclick = () => reset();
+      document.querySelectorAll('.level-btn').forEach(btn => {
+        btn.onclick = () => setLevel(parseInt(btn.dataset.lvl));
+      });
+      
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      document.body.addEventListener('click', () => {
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+      }, { once: true });
+    }
+
+    // ===== КОПИРОВАНИЕ НОМЕРА =====
+    const copyBtnBlock = document.getElementById('copyBtnBlock');
+    
+    copyBtnBlock.addEventListener('click', async () => {
+      const phone = '8-920-227-56-76';
+      const btn = copyBtnBlock;
+      try {
+        await navigator.clipboard.writeText(phone);
+        const originalText = btn.innerText;
+        btn.innerText = '✅ Скопировано!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.innerText = originalText;
+          btn.classList.remove('copied');
+        }, 2000);
+      } catch (err) {
+        const textarea = document.createElement('textarea');
+        textarea.value = phone;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        btn.innerText = '✅ Скопировано!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.innerText = '📋 Копировать';
+          btn.classList.remove('copied');
+        }, 2000);
+      }
+    });
+  </script>
+</body>
+</html>
